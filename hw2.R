@@ -5,7 +5,6 @@
 library(stargazer)
 library(dplyr)
 library(ggplot2)
-library(gridExtra)
 
 # Load data
 data_pre <- read.csv("/Users/jacksonvanvooren/Downloads/data/data_pre.csv")
@@ -84,8 +83,7 @@ stargazer(model_post, title="Pre-Policy Results", align=TRUE)
 #------------------------------------------------------------------------------#
 
 # 5
-# Initialize list and clean data to relevant neighborhoods
-hist_plots <- list()
+# Clean data to relevant neighborhoods
 df_merged_cleaned <- merged_data %>%
   filter(!is.na(neighborhood)) %>%
   filter(neighborhood %in% data_fundingcenters$neighborhood)
@@ -134,7 +132,7 @@ for (neigh in unique_neighborhoods) {
     labs(title = paste("Minimum Distances for", neigh),
          x = "Distance", y = "Frequency") +
     theme_minimal()
-  hist_plots[[neigh]] <- p
+  print(p)
 }
 
 # Update df_merged_cleaned with the correct min_distance values
@@ -143,23 +141,22 @@ df_merged_cleaned$min_distance <- min_distances
 # Total average
 cat(sprintf("Total average: %.2f\n", mean(df_merged_cleaned$min_distance)))
 
-# Plot histograms together in one figure
-grid.arrange(grobs = hist_plots, ncol = 2)
-
 #------------------------------------------------------------------------------#
 
 # 6
 # Plot using geom_smooth LOESS
-p <- ggplot(df_merged_cleaned, aes(x = min_distance, y = lpricesqft,
-                                   color = policy_period)) +
-  geom_smooth(method = "loess", se = FALSE) +
-  labs(title = "Log Land Price per Sqft vs. Distance to Funding Center",
-       x = "Distance to Closest Funding Center",
-       y = "Log Land Price per Sqft") +
-  xlim(0, 1500) +
-  theme_minimal() +
-  scale_color_manual(values = c("Pre-Policy" = "blue", "Post-Policy" = "red")) +
-  theme(legend.title = element_blank()) +
-  facet_wrap(~neighborhood)
+for (neigh in unique_neighborhoods) {
+  df_neigh <- df_merged_cleaned %>% filter(neighborhood == neigh)
 
-print(p)
+  p <- ggplot(df_neigh, aes(x = min_distance, y = lpricesqft, color = policy_period)) +
+    geom_smooth(method = "loess", se = FALSE) +
+    labs(title = paste("Log Land Price per Sqft vs. Distance to Funding Center -", neigh),
+         x = "Distance to Closest Funding Center",
+         y = "Log Land Price per Sqft") +
+    xlim(0, 1500) +
+    theme_minimal() +
+    scale_color_manual(values = c("Pre-Policy" = "blue", "Post-Policy" = "red")) +
+    theme(legend.title = element_blank())
+
+  print(p)
+}
